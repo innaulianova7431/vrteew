@@ -1,0 +1,236 @@
+import pandas as pd
+from web3 import Web3
+from loguru import logger
+import random
+import time
+from tqdm import tqdm
+from moralis import evm_api
+from config import 
+from eth_abi import 
+from eth_utils import 
+
+holo_abi = '[{inputs[],stateMutabilitynonpayable,typeconstructor},{stateMutabilitypayable,typefallback},{inputs[],nameadmin,outputs[{internalTypeaddress,name,typeaddress}],stateMutabilityview,typefunction},{inputs[{internalTypeaddress,nametarget,typeaddress},{internalTypebytes,namedata,typebytes}],nameadminCall,outputs[],stateMutabilitypayable,typefunction},{inputs[{internalTypeuint256,name,typeuint256},{internalTypeuint32,namefromChain,typeuint32},{internalTypeaddress,nameholographableContract,typeaddress},{internalTypeaddress,namehToken,typeaddress},{internalTypeaddress,namehTokenRecipient,typeaddress},{internalTypeuint256,namehTokenValue,typeuint256},{internalTypebool,namedoNotRevert,typebool},{internalTypebytes,namebridgeInPayload,typebytes}],namebridgeInRequest,outputs[],stateMutabilitypayable,typefunction},{inputs[{internalTypeuint32,nametoChain,typeuint32},{internalTypeaddress,nameholographableContract,typeaddress},{internalTypeuint256,namegasLimit,typeuint256},{internalTypeuint256,namegasPrice,typeuint256},{internalTypebytes,namebridgeOutPayload,typebytes}],namebridgeOutRequest,outputs[],stateMutabilitypayable,typefunction},{inputs[],namegetAdmin,outputs[{internalTypeaddress,nameadminAddress,typeaddress}],stateMutabilityview,typefunction},{inputs[{internalTypeuint32,nametoChain,typeuint32},{internalTypeaddress,nameholographableContract,typeaddress},{internalTypeuint256,namegasLimit,typeuint256},{internalTypeuint256,namegasPrice,typeuint256},{internalTypebytes,namebridgeOutPayload,typebytes}],namegetBridgeOutRequestPayload,outputs[{internalTypebytes,namesamplePayload,typebytes}],stateMutabilitynonpayable,typefunction},{inputs[],namegetFactory,outputs[{internalTypeaddress,namefactory,typeaddress}],stateMutabilityview,typefunction},{inputs[],namegetHolograph,outputs[{internalTypeaddress,nameholograph,typeaddress}],stateMutabilityview,typefunction},{inputs[],namegetJobNonce,outputs[{internalTypeuint256,namejobNonce,typeuint256}],stateMutabilityview,typefunction},{inputs[{internalTypeuint32,name,typeuint32},{internalTypeuint256,name,typeuint256},{internalTypeuint256,name,typeuint256},{internalTypebytes,name,typebytes}],namegetMessageFee,outputs[{internalTypeuint256,name,typeuint256},{internalTypeuint256,name,typeuint256},{internalTypeuint256,name,typeuint256}],stateMutabilityview,typefunction},{inputs[],namegetOperator,outputs[{internalTypeaddress,nameoperator,typeaddress}],stateMutabilityview,typefunction},{inputs[],namegetRegistry,outputs[{internalTypeaddress,nameregistry,typeaddress}],stateMutabilityview,typefunction},{inputs[{internalTypebytes,nameinitPayload,typebytes}],nameinit,outputs[{internalTypebytes4,name,typebytes4}],stateMutabilitynonpayable,typefunction},{inputs[{internalTypeaddress,namesender,typeaddress},{internalTypeuint32,nametoChain,typeuint32},{internalTypeaddress,nameholographableContract,typeaddress},{internalTypebytes,namebridgeOutPayload,typebytes}],namerevertedBridgeOutRequest,outputs[{internalTypestring,namerevertReason,typestring}],stateMutabilitynonpayable,typefunction},{inputs[{internalTypeaddress,nameadminAddress,typeaddress}],namesetAdmin,outputs[],stateMutabilitynonpayable,typefunction},{inputs[{internalTypeaddress,namefactory,typeaddress}],namesetFactory,outputs[],stateMutabilitynonpayable,typefunction},{inputs[{internalTypeaddress,nameholograph,typeaddress}],namesetHolograph,outputs[],stateMutabilitynonpayable,typefunction},{inputs[{internalTypeaddress,nameoperator,typeaddress}],namesetOperator,outputs[],stateMutabilitynonpayable,typefunction},{inputs[{internalTypeaddress,nameregistry,typeaddress}],namesetRegistry,outputs[],stateMutabilitynonpayable,typefunction},{stateMutabilitypayable,typereceive}]'
+lzEndpointABI = '[{inputs[{internalTypeuint16,name_chainId,typeuint16}],stateMutabilitynonpayable,typeconstructor},{anonymousfalse,inputs[{indexedfalse,internalTypeuint16,nameversion,typeuint16}],nameDefaultReceiveVersionSet,typeevent},{anonymousfalse,inputs[{indexedfalse,internalTypeuint16,nameversion,typeuint16}],nameDefaultSendVersionSet,typeevent},{anonymousfalse,inputs[{indexedfalse,internalTypeuint16,nameversion,typeuint16}],nameNewLibraryVersionAdded,typeevent},{anonymousfalse,inputs[{indexedtrue,internalTypeaddress,namepreviousOwner,typeaddress},{indexedtrue,internalTypeaddress,namenewOwner,typeaddress}],nameOwnershipTransferred,typeevent},{anonymousfalse,inputs[{indexedfalse,internalTypeuint16,namesrcChainId,typeuint16},{indexedfalse,internalTypebytes,namesrcAddress,typebytes},{indexedfalse,internalTypeuint64,namenonce,typeuint64},{indexedfalse,internalTypeaddress,namedstAddress,typeaddress}],namePayloadCleared,typeevent},{anonymousfalse,inputs[{indexedfalse,internalTypeuint16,namesrcChainId,typeuint16},{indexedfalse,internalTypebytes,namesrcAddress,typebytes},{indexedfalse,internalTypeaddress,namedstAddress,typeaddress},{indexedfalse,internalTypeuint64,namenonce,typeuint64},{indexedfalse,internalTypebytes,namepayload,typebytes},{indexedfalse,internalTypebytes,namereason,typebytes}],namePayloadStored,typeevent},{anonymousfalse,inputs[{indexedfalse,internalTypeuint16,namechainId,typeuint16},{indexedfalse,internalTypebytes,namesrcAddress,typebytes}],nameUaForceResumeReceive,typeevent},{anonymousfalse,inputs[{indexedfalse,internalTypeaddress,nameua,typeaddress},{indexedfalse,internalTypeuint16,nameversion,typeuint16}],nameUaReceiveVersionSet,typeevent},{anonymousfalse,inputs[{indexedfalse,internalTypeaddress,nameua,typeaddress},{indexedfalse,internalTypeuint16,nameversion,typeuint16}],nameUaSendVersionSet,typeevent},{inputs[],nameBLOCK_VERSION,outputs[{internalTypeuint16,name,typeuint16}],stateMutabilityview,typefunction},{inputs[],nameDEFAULT_VERSION,outputs[{internalTypeuint16,name,typeuint16}],stateMutabilityview,typefunction},{inputs[],namechainId,outputs[{internalTypeuint16,name,typeuint16}],stateMutabilityview,typefunction},{inputs[],namedefaultReceiveLibraryAddress,outputs[{internalTypeaddress,name,typeaddress}],stateMutabilityview,typefunction},{inputs[],namedefaultReceiveVersion,outputs[{internalTypeuint16,name,typeuint16}],stateMutabilityview,typefunction},{inputs[],namedefaultSendLibrary,outputs[{internalTypecontract ILayerZeroMessagingLibrary,name,typeaddress}],stateMutabilityview,typefunction},{inputs[],namedefaultSendVersion,outputs[{internalTypeuint16,name,typeuint16}],stateMutabilityview,typefunction},{inputs[{internalTypeuint16,name_dstChainId,typeuint16},{internalTypeaddress,name_userApplication,typeaddress},{internalTypebytes,name_payload,typebytes},{internalTypebool,name_payInZRO,typebool},{internalTypebytes,name_adapterParams,typebytes}],nameestimateFees,outputs[{internalTypeuint256,namenativeFee,typeuint256},{internalTypeuint256,namezroFee,typeuint256}],stateMutabilityview,typefunction},{inputs[{internalTypeuint16,name_srcChainId,typeuint16},{internalTypebytes,name_srcAddress,typebytes}],nameforceResumeReceive,outputs[],stateMutabilitynonpayable,typefunction},{inputs[],namegetChainId,outputs[{internalTypeuint16,name,typeuint16}],stateMutabilityview,typefunction},{inputs[{internalTypeuint16,name_version,typeuint16},{internalTypeuint16,name_chainId,typeuint16},{internalTypeaddress,name_userApplication,typeaddress},{internalTypeuint256,name_configType,typeuint256}],namegetConfig,outputs[{internalTypebytes,name,typebytes}],stateMutabilityview,typefunction},{inputs[{internalTypeuint16,name_srcChainId,typeuint16},{internalTypebytes,name_srcAddress,typebytes}],namegetInboundNonce,outputs[{internalTypeuint64,name,typeuint64}],stateMutabilityview,typefunction},{inputs[{internalTypeuint16,name_dstChainId,typeuint16},{internalTypeaddress,name_srcAddress,typeaddress}],namegetOutboundNonce,outputs[{internalTypeuint64,name,typeuint64}],stateMutabilityview,typefunction},{inputs[{internalTypeaddress,name_userApplication,typeaddress}],namegetReceiveLibraryAddress,outputs[{internalTypeaddress,namereceiveLibraryAddress,typeaddress}],stateMutabilityview,typefunction},{inputs[{internalTypeaddress,name_userApplication,typeaddress}],namegetReceiveVersion,outputs[{internalTypeuint16,name,typeuint16}],stateMutabilityview,typefunction},{inputs[{internalTypeaddress,name_userApplication,typeaddress}],namegetSendLibraryAddress,outputs[{internalTypeaddress,namesendLibraryAddress,typeaddress}],stateMutabilityview,typefunction},{inputs[{internalTypeaddress,name_userApplication,typeaddress}],namegetSendVersion,outputs[{internalTypeuint16,name,typeuint16}],stateMutabilityview,typefunction},{inputs[{internalTypeuint16,name_srcChainId,typeuint16},{internalTypebytes,name_srcAddress,typebytes}],namehasStoredPayload,outputs[{internalTypebool,name,typebool}],stateMutabilityview,typefunction},{inputs[{internalTypeuint16,name,typeuint16},{internalTypebytes,name,typebytes}],nameinboundNonce,outputs[{internalTypeuint64,name,typeuint64}],stateMutabilityview,typefunction},{inputs[],nameisReceivingPayload,outputs[{internalTypebool,name,typebool}],stateMutabilityview,typefunction},{inputs[],nameisSendingPayload,outputs[{internalTypebool,name,typebool}],stateMutabilityview,typefunction},{inputs[],namelatestVersion,outputs[{internalTypeuint16,name,typeuint16}],stateMutabilityview,typefunction},{inputs[{internalTypeuint16,name,typeuint16}],namelibraryLookup,outputs[{internalTypecontract ILayerZeroMessagingLibrary,name,typeaddress}],stateMutabilityview,typefunction},{inputs[{internalTypeaddress,name_newLayerZeroLibraryAddress,typeaddress}],namenewVersion,outputs[],stateMutabilitynonpayable,typefunction},{inputs[{internalTypeuint16,name,typeuint16},{internalTypeaddress,name,typeaddress}],nameoutboundNonce,outputs[{internalTypeuint64,name,typeuint64}],stateMutabilityview,typefunction},{inputs[],nameowner,outputs[{internalTypeaddress,name,typeaddress}],stateMutabilityview,typefunction},{inputs[{internalTypeuint16,name_srcChainId,typeuint16},{internalTypebytes,name_srcAddress,typebytes},{internalTypeaddress,name_dstAddress,typeaddress},{internalTypeuint64,name_nonce,typeuint64},{internalTypeuint256,name_gasLimit,typeuint256},{internalTypebytes,name_payload,typebytes}],namereceivePayload,outputs[],stateMutabilitynonpayable,typefunction},{inputs[],namerenounceOwnership,outputs[],stateMutabilitynonpayable,typefunction},{inputs[{internalTypeuint16,name_srcChainId,typeuint16},{internalTypebytes,name_srcAddress,typebytes},{internalTypebytes,name_payload,typebytes}],nameretryPayload,outputs[],stateMutabilitynonpayable,typefunction},{inputs[{internalTypeuint16,name_dstChainId,typeuint16},{internalTypebytes,name_destination,typebytes},{internalTypebytes,name_payload,typebytes},{internalTypeaddress payable,name_refundAddress,typeaddress},{internalTypeaddress,name_zroPaymentAddress,typeaddress},{internalTypebytes,name_adapterParams,typebytes}],namesend,outputs[],stateMutabilitypayable,typefunction},{inputs[{internalTypeuint16,name_version,typeuint16},{internalTypeuint16,name_chainId,typeuint16},{internalTypeuint256,name_configType,typeuint256},{internalTypebytes,name_config,typebytes}],namesetConfig,outputs[],stateMutabilitynonpayable,typefunction},{inputs[{internalTypeuint16,name_newDefaultReceiveVersion,typeuint16}],namesetDefaultReceiveVersion,outputs[],stateMutabilitynonpayable,typefunction},{inputs[{internalTypeuint16,name_newDefaultSendVersion,typeuint16}],namesetDefaultSendVersion,outputs[],stateMutabilitynonpayable,typefunction},{inputs[{internalTypeuint16,name_newVersion,typeuint16}],namesetReceiveVersion,outputs[],stateMutabilitynonpayable,typefunction},{inputs[{internalTypeuint16,name_newVersion,typeuint16}],namesetSendVersion,outputs[],stateMutabilitynonpayable,typefunction},{inputs[{internalTypeuint16,name,typeuint16},{internalTypebytes,name,typebytes}],namestoredPayload,outputs[{internalTypeuint64,namepayloadLength,typeuint64},{internalTypeaddress,namedstAddress,typeaddress},{internalTypebytes32,namepayloadHash,typebytes32}],stateMutabilityview,typefunction},{inputs[{internalTypeaddress,namenewOwner,typeaddress}],nametransferOwnership,outputs[],stateMutabilitynonpayable,typefunction},{inputs[{internalTypeaddress,name,typeaddress}],nameuaConfigLookup,outputs[{internalTypeuint16,namesendVersion,typeuint16},{internalTypeuint16,namereceiveVersion,typeuint16},{internalTypeaddress,namereceiveLibraryAddress,typeaddress},{internalTypecontract ILayerZeroMessagingLibrary,namesendLibrary,typeaddress}],stateMutabilityview,typefunction}]'
+
+holograph_ids = {'polygon'4,
+                'avax' 3,
+                'bsc' 2}
+
+Lz_ids= {'bsc'102,
+        'avax'106,
+        'polygon'109}
+
+gas_holo = {'bsc'4500000000,
+            'avax'37500000000,
+            'polygon'400000000000}
+
+wallets = []
+results = []
+class Bridger
+    def __init__(self, privatekey,chain,to,delay,api,mode=1)
+        self.privatekey = privatekey
+        self.chain = chain
+        self.to = to
+        self.w3 = ''
+        self.scan = ''
+        self.account = ''
+        self.address = ''
+        self.mode = mode
+        self.delay = delay
+        self.moralisapi = api
+        self.HolographBridgeAddress = Web3.to_checksum_address('0xD85b5E176A30EdD1915D6728FaeBD25669b60d8b')
+        self.LzEndAddress = Web3.to_checksum_address('0x3c2269811836af69497E5F486A85D7316753cf62')
+        self.BLDGAddress = Web3.to_checksum_address('0x8C531f965C05Fab8135d951e2aD0ad75CF3405A2')
+
+    def check_status_tx(self, tx_hash)
+
+        logger.info(f'{self.address}{self.chain} - waiting for confirmation transaction {self.scan}{self.w3.to_hex(tx_hash)}...')
+        while True
+            try
+                status = self.w3.eth.get_transaction_receipt(tx_hash)
+                status = status['status']
+                if status in [0, 1]
+                    return status
+                time.sleep(1)
+            except Exception as error
+                time.sleep(1)
+
+    def sleep_indicator(self,secs)
+        for i in tqdm(range(secs), desc='wait', bar_format={desc} {n_fmt}s  {total_fmt}s {bar}, colour='green')
+            time.sleep(1)
+
+    def check_nft(self)
+        if self.mode == 0 and self.chain != 'opti'
+            cc = {'avax''avalanche',
+                  'polygon''polygon',
+                  'bsc''bsc'}
+            api_key = self.moralisapi
+            params = {
+                chain cc[self.chain],
+                format decimal,
+                token_addresses [
+                    self.BLDGAddress
+                ],
+                media_items False,
+                address self.address}
+            try
+                result = evm_api.nft.get_wallet_nfts(api_key=api_key, params=params)
+                id_ = int(result['result'][0]['token_id'])
+                if id_
+                    logger.success(f'{self.address} - BLDG {id_} nft founded on {self.chain}...')
+                    return id_
+            except Exception as e
+                return False
+
+        elif self.mode == 0 and self.chain == 'opti'
+            contract_abi = [
+                {
+                    constant True,
+                    inputs [{name _owner, type address}],
+                    name balanceOf,
+                    outputs [{name balance, type uint256}],
+                    payable False,
+                    stateMutability view,
+                    type function
+                },
+                {
+                    constant True,
+                    inputs [{name _owner, type address}],
+                    name tokensOfOwner,
+                    outputs [{name tokenIds, type uint256[]}],
+                    payable False,
+                    stateMutability view,
+                    type function
+                }
+            ]
+            contract = self.w3.eth.contract(address=self.BLDGAddress, abi=contract_abi)
+            bal = contract.functions.balanceOf(self.address).call()
+            if bal
+                id_ = contract.functions.tokensOfOwner(self.address).call()[0]
+                logger.success(f'{self.address} - BLDG {id_} nft founded on {self.chain}...')
+                return id_
+            else
+                return False
+
+
+        elif self.mode == 1
+            for chain in ['avalanche', 'polygon', 'bsc']
+
+                    api_key = self.moralisapi
+                    params = {
+                        chain chain,
+                        format decimal,
+                        token_addresses [
+                            self.BLDGAddress
+                        ],
+                        media_items False,
+                        address self.address}
+                    try
+                        result = evm_api.nft.get_wallet_nfts(api_key=api_key, params=params)
+                        id_ = int(result['result'][0]['token_id'])
+                        if id_
+                            logger.success(f'{self.address} - BLDG {id_} nft founded on {chain}...')
+                            if chain == 'avalanche' chain = 'avax'
+                            return chain, id_
+
+                    except Exception as e
+                        if 'list index out of range' in str(e)
+                            continue
+
+            logger.error(f'{self.address} - BLDG nft not in wallet...')
+            return False
+
+
+    def start(self)
+        if self.mode == 0
+            self.w3 = Web3(Web3.HTTPProvider(info[self.chain][1]))
+            self.scan = info[self.chain][0]
+            self.account = self.w3.eth.account.from_key(self.privatekey)
+            self.address = self.account.address
+            data = self.check_nft()
+            if data
+                nft_id = data
+            else
+                return self.address,'BLDG nft not in wallet'
+
+        elif self.mode == 1
+            self.w3 = Web3(Web3.HTTPProvider(info['bsc'][1]))
+            self.address = self.w3.eth.account.from_key(self.privatekey).address
+            data = self.check_nft()
+
+            if data
+                chain,nft_id = data
+                self.chain = chain
+                self.w3 = Web3(Web3.HTTPProvider(info[self.chain][1]))
+                self.scan = info[self.chain][0]
+                self.account = self.w3.eth.account.from_key(self.privatekey)
+                self.address = self.account.address
+                if chain == self.to
+                    chains = ['avax', 'polygon', 'bsc']
+                    chains.remove(self.to)
+                    self.to = random.choice(chains)
+            else
+                return self.address,'BLDG nft not in wallet'
+
+        payload = to_hex(encode(['address', 'address', 'uint256'], [self.address, self.address, nft_id]))
+        gas_price = gas_holo[self.to]
+        gas_lim = random.randint(450000, 500000)
+
+        holograph = self.w3.eth.contract(address=self.HolographBridgeAddress, abi=holo_abi)
+        lzEndpoint = self.w3.eth.contract(address=self.LzEndAddress, abi=lzEndpointABI)
+
+        lzFee = lzEndpoint.functions.estimateFees(Lz_ids[self.to],self.HolographBridgeAddress,'0x',False,'0x').call()[0]
+        lzFee = int(lzFee  2.5)
+        to = holograph_ids[self.to]
+
+        while True
+            logger.info(f'{self.address}{self.chain} - trying to bridge... ')
+            try
+                tx = holograph.functions.bridgeOutRequest(to, self.BLDGAddress, gas_lim, gas_price,payload).build_transaction({
+                    'from' self.address,
+                    'value' lzFee,
+                    'gas' holograph.functions.bridgeOutRequest(to, self.BLDGAddress, gas_lim, gas_price,payload).estimate_gas({'from' self.address, 'value' lzFee,'nonce' self.w3.eth.get_transaction_count(self.address), }),
+                    'gasPrice' self.w3.eth.gas_price,
+                    'nonce' self.w3.eth.get_transaction_count(self.address),
+                })
+                sign = self.account.sign_transaction(tx)
+                hash = self.w3.eth.send_raw_transaction(sign.rawTransaction)
+                status = self.check_status_tx(hash)
+                self.sleep_indicator(10)
+                if status == 1
+                    logger.success(f'{self.address}{self.chain} - successfully bridged BLDG {nft_id} to {self.to}  {self.scan}{self.w3.to_hex(hash)}...')
+                    self.sleep_indicator(random.randint(self.delay[0],self.delay[1]))
+                    return self.address, 'success'
+            except Exception as e
+                error = str(e)
+                if 'nonce too low' in error or 'already known' in error
+                    logger.success(f'{self.address}{self.chain} - successfully bridged BLDG {nft_id} to {self.to}...')
+                    self.sleep_indicator(random.randint(self.delay[0],self.delay[1]))
+                    return self.address, 'success'
+                logger.error(f'{self.address}{self.chain} - error {e}')
+                return self.address, 'error'
+
+
+def main()
+    logger.info(f'{ 32}creator - httpst.meiliocka{ 32}')
+
+    with open(keys.txt, r) as f
+        keys = [row.strip() for row in f]
+        random.shuffle(keys)
+    for key in keys
+        to_chain = random.choice(to) if type(to) == list else to
+        holo = Bridger(key,chain,to_chain,delay,api,mode)
+        res = holo.start()
+        wallets.append(res[0]), results.append(res[1])
+
+    res = {'address' wallets, 'result' results}
+    df = pd.DataFrame(res)
+    df.to_csv('results.csv', index=False)
+    logger.success('Bridging done...')
+    print(f'n{   32}creator - httpst.meiliocka{   32}n')
+    print(f'n{   32}donate - EVM 0xFD6594D11b13C6b1756E328cc13aC26742dBa868{   32}n')
+    print(f'n{   32}donate - trc20 TMmL915TX2CAPkh9SgF31U4Trr32NStRBp{   32}n')
+    logger.success('...')
+
+if __name__ == '__main__'
+    main()
